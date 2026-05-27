@@ -53,16 +53,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized. Please log in again." }, { status: 401 });
   }
 
-  if (process.env.VERCEL === "1" && !useBlobStorage()) {
-    return NextResponse.json(
-      {
-        error:
-          "Upload storage is not configured. In Vercel, add a Blob store (Storage → Blob) and redeploy.",
-      },
-      { status: 503 },
-    );
-  }
-
   try {
     const formData = await request.formData();
     const entry = formData.get("file");

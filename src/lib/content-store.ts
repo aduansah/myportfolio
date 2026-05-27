@@ -45,12 +45,6 @@ export async function getSiteContent(): Promise<SiteContent> {
 export async function saveSiteContent(content: SiteContent): Promise<void> {
   const serialized = JSON.stringify(content, null, 2);
 
-  if (process.env.VERCEL === "1" && !useBlobStorage()) {
-    throw new Error(
-      "CMS storage is not configured for production. Add a Vercel Blob store to the project.",
-    );
-  }
-
   if (useBlobStorage()) {
     await writeContentBlob(serialized);
     return;

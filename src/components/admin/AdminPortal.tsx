@@ -513,6 +513,10 @@ export function AdminPortal() {
   const [content, setContent] = useState<SiteContent>(getDefaultSiteContent());
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
+  const [storageStatus, setStorageStatus] = useState<{
+    ready: boolean;
+    message: string;
+  } | null>(null);
 
   const loadSession = useCallback(async () => {
     const sessionRes = await fetch("/api/admin/session", { credentials: "include" });
@@ -520,9 +524,18 @@ export function AdminPortal() {
     setAuthenticated(session.authenticated);
 
     if (session.authenticated) {
-      const contentRes = await fetch("/api/admin/content", { credentials: "include" });
+      const [contentRes, storageRes] = await Promise.all([
+        fetch("/api/admin/content", { credentials: "include" }),
+        fetch("/api/admin/storage-status", { credentials: "include" }),
+      ]);
+
       if (contentRes.ok) {
         setContent((await contentRes.json()) as SiteContent);
+      }
+
+      if (storageRes.ok) {
+        const storage = (await storageRes.json()) as { ready: boolean; message: string };
+        setStorageStatus({ ready: storage.ready, message: storage.message });
       }
     }
   }, []);
@@ -615,6 +628,15 @@ export function AdminPortal() {
             </button>
           </div>
         </div>
+        {storageStatus && (
+          <p
+            className={`mx-auto max-w-7xl px-6 pb-4 text-sm ${
+              storageStatus.ready ? "text-emerald-400" : "text-amber-400"
+            }`}
+          >
+            Storage: {storageStatus.message}
+          </p>
+        )}
       </header>
 
       <div className="mx-auto grid max-w-7xl gap-8 px-6 py-8 lg:grid-cols-[220px_1fr]">
