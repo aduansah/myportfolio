@@ -1,3 +1,5 @@
+import { parsePortfolioHash as parsePortfolioHashWithTabs } from "@/lib/portfolio-hash";
+
 export const SITE = {
   name: "The Kofi Ansah",
   title: "Photographer • Graphic Designer • Creative Developer • Videographer",
@@ -236,21 +238,7 @@ export const PORTFOLIO_TABS: PortfolioTab[] = [
 ];
 
 export function parsePortfolioHash(hash: string) {
-  const cleaned = hash.replace("#", "");
-  if (!cleaned.startsWith("projects-")) return null;
-
-  const slug = cleaned.replace("projects-", "");
-  for (const tab of PORTFOLIO_TABS) {
-    if (slug === tab.id) {
-      return { tabId: tab.id, subsectionId: tab.subsections[0]?.id ?? null };
-    }
-    for (const sub of tab.subsections) {
-      if (slug === `${tab.id}-${sub.id}`) {
-        return { tabId: tab.id, subsectionId: sub.id };
-      }
-    }
-  }
-  return null;
+  return parsePortfolioHashWithTabs(hash, PORTFOLIO_TABS);
 }
 
 export const CASE_STUDIES = [

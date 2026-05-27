@@ -2,32 +2,46 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { PORTFOLIO_TABS, parsePortfolioHash } from "@/lib/constants";
 import { PortfolioLightbox, PortfolioStack } from "@/components/portfolio/PortfolioStack";
+import { useSiteContent } from "@/contexts/SiteContentContext";
+import { parsePortfolioHash } from "@/lib/portfolio-hash";
 
 function buildHash(tabId: string, subsectionId: string) {
   return `#projects-${tabId}-${subsectionId}`;
 }
 
 export function FeaturedProjects() {
-  const [activeTabId, setActiveTabId] = useState(PORTFOLIO_TABS[0].id);
-  const [activeSubId, setActiveSubId] = useState(PORTFOLIO_TABS[0].subsections[0].id);
+  const { content } = useSiteContent();
+  const portfolioTabs = content.portfolioTabs;
+  const [activeTabId, setActiveTabId] = useState(portfolioTabs[0]?.id ?? "");
+  const [activeSubId, setActiveSubId] = useState(portfolioTabs[0]?.subsections[0]?.id ?? "");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
-  const activeTab = PORTFOLIO_TABS.find((t) => t.id === activeTabId) ?? PORTFOLIO_TABS[0];
+  const activeTab = portfolioTabs.find((t) => t.id === activeTabId) ?? portfolioTabs[0];
   const activeSub =
-    activeTab.subsections.find((s) => s.id === activeSubId) ?? activeTab.subsections[0];
+    activeTab?.subsections.find((s) => s.id === activeSubId) ?? activeTab?.subsections[0];
 
-  const applyHash = useCallback((hash: string) => {
-    const parsed = parsePortfolioHash(hash);
-    if (!parsed) return;
+  const applyHash = useCallback(
+    (hash: string) => {
+      const parsed = parsePortfolioHash(hash, portfolioTabs);
+      if (!parsed) return;
 
-    setActiveTabId(parsed.tabId);
-    if (parsed.subsectionId) {
-      setActiveSubId(parsed.subsectionId);
+      setActiveTabId(parsed.tabId);
+      if (parsed.subsectionId) {
+        setActiveSubId(parsed.subsectionId);
+      }
+      setLightboxIndex(null);
+    },
+    [portfolioTabs],
+  );
+
+  useEffect(() => {
+    if (!portfolioTabs.length) return;
+    if (!portfolioTabs.some((tab) => tab.id === activeTabId)) {
+      setActiveTabId(portfolioTabs[0].id);
+      setActiveSubId(portfolioTabs[0].subsections[0]?.id ?? "");
     }
-    setLightboxIndex(null);
-  }, []);
+  }, [portfolioTabs, activeTabId]);
 
   useEffect(() => {
     applyHash(window.location.hash);
@@ -38,7 +52,7 @@ export function FeaturedProjects() {
   }, [applyHash]);
 
   const selectTab = (tabId: string) => {
-    const tab = PORTFOLIO_TABS.find((t) => t.id === tabId);
+    const tab = portfolioTabs.find((t) => t.id === tabId);
     if (!tab) return;
     const firstSub = tab.subsections[0].id;
     setActiveTabId(tabId);
@@ -52,6 +66,10 @@ export function FeaturedProjects() {
     setLightboxIndex(null);
     window.history.replaceState(null, "", buildHash(activeTabId, subsectionId));
   };
+
+  if (!activeTab || !activeSub) {
+    return null;
+  }
 
   return (
     <section id="projects" className="section-pad">
@@ -69,7 +87,7 @@ export function FeaturedProjects() {
         </div>
 
         <div className="mt-10 grid grid-cols-2 gap-1 rounded-2xl border border-white/12 bg-black-soft/50 p-1.5 sm:grid-cols-4">
-          {PORTFOLIO_TABS.map((tab) => {
+          {portfolioTabs.map((tab) => {
             const active = activeTabId === tab.id;
             return (
               <button

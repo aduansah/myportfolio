@@ -8,10 +8,14 @@ import { Header } from "@/components/portfolio/Header";
 import { Hero } from "@/components/portfolio/Hero";
 import { Services } from "@/components/portfolio/Services";
 import { Testimonials } from "@/components/portfolio/Testimonials";
+import { SiteContentProvider } from "@/contexts/SiteContentContext";
+import { getSiteContent } from "@/lib/content-store";
 
-export default function Home() {
+export default async function Home() {
+  const initialContent = await getSiteContent();
+
   return (
-    <>
+    <SiteContentProvider initialContent={initialContent}>
       <Header />
       <main>
         <Hero />
@@ -24,6 +28,6 @@ export default function Home() {
         <Contact />
       </main>
       <Footer />
-    </>
+    </SiteContentProvider>
   );
 }

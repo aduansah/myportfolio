@@ -4,11 +4,13 @@ import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { CASE_STUDIES } from "@/lib/constants";
+import { useSiteContent } from "@/contexts/SiteContentContext";
 
 gsap.registerPlugin(ScrollTrigger);
 
 export function CaseStudies() {
+  const { content } = useSiteContent();
+  const caseStudies = content.caseStudies;
   const sectionRef = useRef<HTMLElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
 
@@ -47,9 +49,9 @@ export function CaseStudies() {
       </div>
 
       <div ref={trackRef} className="flex w-max gap-8 section-pad !pt-12">
-        {CASE_STUDIES.map((study) => (
+        {caseStudies.map((study) => (
           <article
-            key={study.client}
+            key={study.id}
             className="glass w-[min(90vw,920px)] shrink-0 overflow-hidden rounded-luxury"
           >
             <div className="grid lg:grid-cols-2">

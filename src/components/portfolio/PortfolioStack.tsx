@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, X, ZoomIn } from "lucide-react";
-import type { PortfolioImage } from "@/lib/constants";
+import type { PortfolioImage } from "@/lib/content-types";
 
 type PortfolioLightboxProps = {
   images: PortfolioImage[];

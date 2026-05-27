@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { NAV_LINKS, SITE } from "@/lib/constants";
 
 export function Header() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [logoError, setLogoError] = useState(false);
+  const tapRef = useRef({ count: 0, timer: null as ReturnType<typeof setTimeout> | null });
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 30);
@@ -17,6 +20,27 @@ export function Header() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  const handleLogoTap = () => {
+    tapRef.current.count += 1;
+
+    if (tapRef.current.timer) {
+      clearTimeout(tapRef.current.timer);
+    }
+
+    if (tapRef.current.count >= 3) {
+      tapRef.current.count = 0;
+      router.push("/admin");
+      return;
+    }
+
+    tapRef.current.timer = setTimeout(() => {
+      if (tapRef.current.count === 1) {
+        window.location.hash = "#home";
+      }
+      tapRef.current.count = 0;
+    }, 450);
+  };
+
   return (
     <header
       className={`fixed inset-x-0 top-0 z-40 transition-all duration-500 ${
@@ -24,7 +48,12 @@ export function Header() {
       }`}
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between section-pad !py-0">
-        <a href="#home" className="flex items-center" aria-label={SITE.name}>
+        <button
+          type="button"
+          onClick={handleLogoTap}
+          className="flex items-center"
+          aria-label={SITE.name}
+        >
           {!logoError ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -40,7 +69,7 @@ export function Header() {
               The Kofi<span className="text-gold">.</span>
             </span>
           )}
-        </a>
+        </button>
 
         <nav className="hidden items-center gap-8 lg:flex">
           {NAV_LINKS.map((link) => (

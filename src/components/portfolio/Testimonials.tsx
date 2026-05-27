@@ -2,19 +2,26 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { TESTIMONIALS } from "@/lib/constants";
+import { useSiteContent } from "@/contexts/SiteContentContext";
 
 export function Testimonials() {
+  const { content } = useSiteContent();
+  const testimonials = content.testimonials;
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
+    if (!testimonials.length) return;
     const timer = setInterval(() => {
-      setIndex((i) => (i + 1) % TESTIMONIALS.length);
+      setIndex((i) => (i + 1) % testimonials.length);
     }, 5500);
     return () => clearInterval(timer);
-  }, []);
+  }, [testimonials.length]);
 
-  const current = TESTIMONIALS[index];
+  if (!testimonials.length) {
+    return null;
+  }
+
+  const current = testimonials[index];
 
   return (
     <section className="section-pad">
@@ -40,9 +47,9 @@ export function Testimonials() {
           </AnimatePresence>
 
           <div className="mt-8 flex justify-center gap-2">
-            {TESTIMONIALS.map((t, i) => (
+            {testimonials.map((t, i) => (
               <button
-                key={t.name}
+                key={t.id}
                 type="button"
                 aria-label={`Show testimonial from ${t.name}`}
                 onClick={() => setIndex(i)}
