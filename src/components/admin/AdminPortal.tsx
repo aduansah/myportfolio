@@ -11,7 +11,11 @@ type AdminSection = "portfolio" | "case-studies" | "testimonials";
 async function uploadImage(file: File) {
   const formData = new FormData();
   formData.append("file", file);
-  const response = await fetch("/api/admin/upload", { method: "POST", body: formData });
+  const response = await fetch("/api/admin/upload", {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+  });
   if (!response.ok) {
     const data = (await response.json()) as { error?: string };
     throw new Error(data.error ?? "Upload failed");
@@ -33,6 +37,7 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
     try {
       const response = await fetch("/api/admin/login", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
       });
@@ -127,9 +132,11 @@ function Field({
 function PortfolioEditor({
   content,
   onChange,
+  onPersist,
 }: {
   content: SiteContent;
   onChange: (next: SiteContent) => void;
+  onPersist: (next: SiteContent) => Promise<boolean>;
 }) {
   const [tabId, setTabId] = useState(content.portfolioTabs[0]?.id ?? "");
   const [subId, setSubId] = useState(content.portfolioTabs[0]?.subsections[0]?.id ?? "");
@@ -141,8 +148,8 @@ function PortfolioEditor({
   const activeSub =
     activeTab?.subsections.find((sub) => sub.id === subId) ?? activeTab?.subsections[0];
 
-  const updateImages = (images: PortfolioImage[]) => {
-    if (!activeTab || !activeSub) return;
+  const buildNextContent = (images: PortfolioImage[]) => {
+    if (!activeTab || !activeSub) return content;
 
     const nextTabs = content.portfolioTabs.map((tab) => {
       if (tab.id !== activeTab.id) return tab;
@@ -154,7 +161,11 @@ function PortfolioEditor({
       };
     });
 
-    onChange({ ...content, portfolioTabs: nextTabs });
+    return { ...content, portfolioTabs: nextTabs };
+  };
+
+  const updateImages = (images: PortfolioImage[]) => {
+    onChange(buildNextContent(images));
   };
 
   const handleUpload = async (file: File, replaceIndex?: number) => {
@@ -165,16 +176,20 @@ function PortfolioEditor({
       const title = newTitle.trim() || file.name.replace(/\.[^.]+$/, "");
       const nextImage: PortfolioImage = { title, image: url };
 
+      let images: PortfolioImage[];
       if (typeof replaceIndex === "number") {
-        const images = [...(activeSub?.images ?? [])];
+        images = [...(activeSub?.images ?? [])];
         images[replaceIndex] = { ...images[replaceIndex], image: url };
-        updateImages(images);
       } else {
-        updateImages([...(activeSub?.images ?? []), nextImage]);
+        images = [...(activeSub?.images ?? []), nextImage];
         setNewTitle("");
       }
 
-      setMessage("Upload saved to draft. Click Save Changes to publish.");
+      const nextContent = buildNextContent(images);
+      onChange(nextContent);
+
+      const saved = await onPersist(nextContent);
+      setMessage(saved ? "Uploaded and published to the site." : "Upload finished but save failed. Try Save Changes.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Upload failed");
     } finally {
@@ -279,7 +294,13 @@ function PortfolioEditor({
               </label>
               <button
                 type="button"
-                onClick={() => updateImages(activeSub.images.filter((_, i) => i !== index))}
+                onClick={() => {
+                  const nextContent = buildNextContent(activeSub.images.filter((_, i) => i !== index));
+                  onChange(nextContent);
+                  void onPersist(nextContent).then((saved) => {
+                    setMessage(saved ? "Item deleted and published." : "Deleted locally but save failed.");
+                  });
+                }}
                 className="text-sm text-red-400 transition hover:text-red-300"
               >
                 Delete item
@@ -295,9 +316,11 @@ function PortfolioEditor({
 function CaseStudiesEditor({
   content,
   onChange,
+  onPersist,
 }: {
   content: SiteContent;
   onChange: (next: SiteContent) => void;
+  onPersist: (next: SiteContent) => Promise<boolean>;
 }) {
   const updateStudy = (index: number, patch: Partial<CaseStudy>) => {
     const caseStudies = content.caseStudies.map((study, i) =>
@@ -397,12 +420,14 @@ function CaseStudiesEditor({
               />
               <button
                 type="button"
-                onClick={() =>
-                  onChange({
+                onClick={() => {
+                  const nextContent = {
                     ...content,
                     caseStudies: content.caseStudies.filter((_, i) => i !== index),
-                  })
-                }
+                  };
+                  onChange(nextContent);
+                  void onPersist(nextContent);
+                }}
                 className="text-sm text-red-400 transition hover:text-red-300"
               >
                 Delete case study
@@ -418,9 +443,11 @@ function CaseStudiesEditor({
 function TestimonialsEditor({
   content,
   onChange,
+  onPersist,
 }: {
   content: SiteContent;
   onChange: (next: SiteContent) => void;
+  onPersist: (next: SiteContent) => Promise<boolean>;
 }) {
   const updateItem = (index: number, patch: Partial<Testimonial>) => {
     const testimonials = content.testimonials.map((item, i) =>
@@ -461,12 +488,14 @@ function TestimonialsEditor({
           <Field label="Role" value={item.role} onChange={(role) => updateItem(index, { role })} />
           <button
             type="button"
-            onClick={() =>
-              onChange({
+            onClick={() => {
+              const nextContent = {
                 ...content,
                 testimonials: content.testimonials.filter((_, i) => i !== index),
-              })
-            }
+              };
+              onChange(nextContent);
+              void onPersist(nextContent);
+            }}
             className="text-sm text-red-400 transition hover:text-red-300"
           >
             Delete testimonial
@@ -486,12 +515,12 @@ export function AdminPortal() {
   const [status, setStatus] = useState("");
 
   const loadSession = useCallback(async () => {
-    const sessionRes = await fetch("/api/admin/session");
+    const sessionRes = await fetch("/api/admin/session", { credentials: "include" });
     const session = (await sessionRes.json()) as { authenticated: boolean };
     setAuthenticated(session.authenticated);
 
     if (session.authenticated) {
-      const contentRes = await fetch("/api/admin/content");
+      const contentRes = await fetch("/api/admin/content", { credentials: "include" });
       if (contentRes.ok) {
         setContent((await contentRes.json()) as SiteContent);
       }
@@ -502,31 +531,40 @@ export function AdminPortal() {
     void loadSession();
   }, [loadSession]);
 
-  const saveContent = async () => {
+  const persistContent = async (nextContent: SiteContent) => {
+    setContent(nextContent);
     setSaving(true);
     setStatus("");
+
     try {
       const response = await fetch("/api/admin/content", {
         method: "PUT",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(content),
+        body: JSON.stringify(nextContent),
       });
 
       if (!response.ok) {
         setStatus("Save failed. Check your session and try again.");
-        return;
+        return false;
       }
 
       setStatus("Saved. Changes are live on the website.");
+      return true;
     } catch {
       setStatus("Save failed.");
+      return false;
     } finally {
       setSaving(false);
     }
   };
 
+  const saveContent = async () => {
+    await persistContent(content);
+  };
+
   const logout = async () => {
-    await fetch("/api/admin/logout", { method: "POST" });
+    await fetch("/api/admin/logout", { method: "POST", credentials: "include" });
     setAuthenticated(false);
     router.push("/");
   };
@@ -559,7 +597,10 @@ export function AdminPortal() {
             </button>
             <button
               type="button"
-              onClick={() => router.push("/")}
+              onClick={() => {
+                router.push("/");
+                router.refresh();
+              }}
               className="rounded-luxury border border-white/10 px-4 py-2.5 text-sm text-muted transition hover:text-white"
             >
               View site
@@ -601,9 +642,15 @@ export function AdminPortal() {
         <main>
           {status && <p className="mb-4 text-sm text-gold">{status}</p>}
 
-          {section === "portfolio" && <PortfolioEditor content={content} onChange={setContent} />}
-          {section === "case-studies" && <CaseStudiesEditor content={content} onChange={setContent} />}
-          {section === "testimonials" && <TestimonialsEditor content={content} onChange={setContent} />}
+          {section === "portfolio" && (
+            <PortfolioEditor content={content} onChange={setContent} onPersist={persistContent} />
+          )}
+          {section === "case-studies" && (
+            <CaseStudiesEditor content={content} onChange={setContent} onPersist={persistContent} />
+          )}
+          {section === "testimonials" && (
+            <TestimonialsEditor content={content} onChange={setContent} onPersist={persistContent} />
+          )}
         </main>
       </div>
     </div>

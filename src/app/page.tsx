@@ -11,6 +11,8 @@ import { Testimonials } from "@/components/portfolio/Testimonials";
 import { SiteContentProvider } from "@/contexts/SiteContentContext";
 import { getSiteContent } from "@/lib/content-store";
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const initialContent = await getSiteContent();
 

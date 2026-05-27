@@ -8,6 +8,12 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: projectRoot,
   },
+  experimental: {
+    proxyClientMaxBodySize: "25mb",
+    serverActions: {
+      bodySizeLimit: "25mb",
+    },
+  },
   images: {
     remotePatterns: [{ protocol: "https", hostname: "images.unsplash.com" }],
   },

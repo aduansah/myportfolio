@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import type { SiteContent } from "@/lib/content-types";
-import {
-  ADMIN_COOKIE,
-  createSessionToken,
-  getSessionCookieOptions,
-  isAdminAuthenticated,
-  verifyAdminPassword,
-} from "@/lib/admin-auth";
+import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { getSiteContent, saveSiteContent } from "@/lib/content-store";
+
+export const dynamic = "force-dynamic";
 
 export async function PUT(request: Request) {
   if (!(await isAdminAuthenticated())) {
@@ -21,8 +18,10 @@ export async function PUT(request: Request) {
     }
 
     await saveSiteContent(body);
+    revalidatePath("/");
     return NextResponse.json({ ok: true });
-  } catch {
+  } catch (error) {
+    console.error("Failed to save content:", error);
     return NextResponse.json({ error: "Failed to save content" }, { status: 500 });
   }
 }

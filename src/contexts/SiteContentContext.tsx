@@ -27,11 +27,14 @@ type SiteContentProviderProps = {
 
 export function SiteContentProvider({ children, initialContent }: SiteContentProviderProps) {
   const [content, setContent] = useState<SiteContent>(initialContent ?? getDefaultSiteContent());
-  const [loading, setLoading] = useState(!initialContent);
+  const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     try {
-      const response = await fetch("/api/content", { cache: "no-store" });
+      const response = await fetch("/api/content", {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
       if (!response.ok) return;
       const data = (await response.json()) as SiteContent;
       setContent(data);
@@ -41,10 +44,17 @@ export function SiteContentProvider({ children, initialContent }: SiteContentPro
   }, []);
 
   useEffect(() => {
-    if (!initialContent) {
+    void refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    const onFocus = () => {
       void refresh();
-    }
-  }, [initialContent, refresh]);
+    };
+
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [refresh]);
 
   const value = useMemo(
     () => ({
