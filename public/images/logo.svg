@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 168 40" fill="none" aria-label="The Kofi Ansah">
+  <defs>
+    <linearGradient id="kofi-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F6E8D5" />
+      <stop offset="45%" stop-color="#F5B041" />
+      <stop offset="100%" stop-color="#FF8C42" />
+    </linearGradient>
+  </defs>
+  <text
+    x="0"
+    y="30"
+    fill="#FFFFFF"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="24"
+    font-weight="600"
+    letter-spacing="-0.02em"
+  >
+    The Kofi<tspan fill="url(#kofi-gold)">.</tspan>
+  </text>
+</svg>
