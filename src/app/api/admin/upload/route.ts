@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { promises as fs } from "fs";
 import path from "path";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { uploadImageBlob, uploadImageLocal, useBlobStorage } from "@/lib/blob-storage";
 
 export const runtime = "nodejs";
 
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
 const MAX_BYTES = 20 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".heic", ".heif", ".avif"]);
 
@@ -23,14 +22,45 @@ function isAllowedImage(fileName: string, mimeType: string) {
   return ALLOWED_EXTENSIONS.has(ext);
 }
 
+function guessContentType(fileName: string, mimeType: string) {
+  if (mimeType) return mimeType;
+  const ext = path.extname(fileName).toLowerCase();
+  const map: Record<string, string> = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+    ".heic": "image/heic",
+    ".heif": "image/heif",
+    ".avif": "image/avif",
+  };
+  return map[ext] ?? "application/octet-stream";
+}
+
 function getUploadError(error: unknown) {
-  if (error instanceof Error) return error.message;
+  if (error instanceof Error) {
+    if (error.message.includes("EROFS") || error.message.includes("read-only file system")) {
+      return "Upload storage is not configured for production. Add a Vercel Blob store to the project.";
+    }
+    return error.message;
+  }
   return "Upload failed";
 }
 
 export async function POST(request: Request) {
   if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Unauthorized. Please log in again." }, { status: 401 });
+  }
+
+  if (process.env.VERCEL === "1" && !useBlobStorage()) {
+    return NextResponse.json(
+      {
+        error:
+          "Upload storage is not configured. In Vercel, add a Blob store (Storage → Blob) and redeploy.",
+      },
+      { status: 503 },
+    );
   }
 
   try {
@@ -59,12 +89,14 @@ export async function POST(request: Request) {
     const ext = path.extname(fileName).toLowerCase() || ".jpg";
     const base = sanitizeFilename(path.basename(fileName, ext)) || "upload";
     const filename = `${Date.now()}-${base}${ext}`;
-
-    await fs.mkdir(UPLOAD_DIR, { recursive: true });
     const buffer = Buffer.from(await file.arrayBuffer());
-    await fs.writeFile(path.join(UPLOAD_DIR, filename), buffer);
+    const contentType = guessContentType(fileName, mimeType);
 
-    return NextResponse.json({ url: `/uploads/${filename}` });
+    const url = useBlobStorage()
+      ? await uploadImageBlob(buffer, filename, contentType)
+      : await uploadImageLocal(buffer, filename);
+
+    return NextResponse.json({ url });
   } catch (error) {
     console.error("Upload failed:", error);
     return NextResponse.json({ error: getUploadError(error) }, { status: 500 });
